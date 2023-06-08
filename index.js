@@ -92,7 +92,7 @@ async function run() {
         //post  all users
         app.post('/users', async (req, res) => {
             const user = req.body;
-            const query = { email: user.email }
+            const query = { email: user.email,photo:photoURL }
             const existingUser = await UserCollection.findOne(query);
             if (existingUser) {
                 return res.send({ message: 'user already exists' })
