@@ -64,7 +64,7 @@ async function run() {
 
         //popular classes api
         app.get('/popularclasses', async (req, res) => {
-            const result = await ClassesCollection.find({status: 'approved'}).sort({ students_enrolled: -1 }).limit(6).toArray()
+            const result = await ClassesCollection.find({ status: 'approved' }).sort({ students_enrolled: -1 }).limit(6).toArray()
             res.send(result)
         })
 
@@ -99,6 +99,7 @@ async function run() {
                 return res.send({ message: 'user already exists' })
             }
             const result = await UserCollection.insertOne(user);
+            console.log(user)
             res.send(result);
         });
 
@@ -113,6 +114,7 @@ async function run() {
         // post class a instructor
         app.post('/addclasses', async (req, res) => {
             const { className, classImageURL, instructorEmail, availableSeats, price, instructorName } = req.body;
+            
             const newClass = { className, classImageURL, instructorEmail, availableSeats, price, instructorName, status: 'pending' };
 
             try {
@@ -164,9 +166,39 @@ async function run() {
 
         //get all my class i am added
         app.get("/myclass/:email", async (req, res) => {
-            const Class = await ClassesCollection.find({ email: req.params.email }).toArray();
+            console.log('email', req.params.email)
+            const Class = await ClassesCollection.find({
+                instructorEmail: req.params.email
+            }).toArray();
             res.send(Class);
         });
+
+        //update  my class
+        app.get("/update/:id", async (req, res) => {
+            const id = req.params.id;
+            const update = { _id: new ObjectId(id) }
+            const result = await ClassesCollection.findOne(update)
+            res.send(result)
+        })
+
+
+        //update product 
+        app.post("/updateclass/:id", async (req, res) => {
+            const id = req.params.id;
+            const body = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updatedclass = {
+                $set: {
+                    className: body.className,
+                    classImageURL: body.classImageURL,
+                    price: body.price,
+                    availableSeats:body.availableSeats
+                },
+            };
+            const result = await ClassesCollection.updateOne(filter, updatedclass,);
+            res.send(result);
+        });
+
 
 
         //admin api
@@ -184,27 +216,27 @@ async function run() {
         })
 
         //api for add  new class
-        app.post('/api/classes', (req, res) => {
-            const { className, classImage, availableSeats, price } = req.body;
-            const newClass = {
-                className,
-                classImage,
-                availableSeats,
-                price,
-                status: 'pending',
-            };
-            // Save the newClass to the classes collection in the database
-            ClassesCollection.insertOne(newClass, (error, result) => {
-                if (error) {
-                    console.error('Failed to insert class:', error);
-                    res.status(500).json({ message: 'Failed to add class' });
-                    return;
-                }
+        // app.post('/api/classes', (req, res) => {
+        //     const { className, classImage, availableSeats, price } = req.body;
+        //     const newClass = {
+        //         className,
+        //         classImage,
+        //         availableSeats,
+        //         price,
+        //         status: 'pending',
+        //     };
+        //     // Save the newClass to the classes collection in the database
+        //     ClassesCollection.insertOne(newClass, (error, result) => {
+        //         if (error) {
+        //             console.error('Failed to insert class:', error);
+        //             res.status(500).json({ message: 'Failed to add class' });
+        //             return;
+        //         }
 
-                console.log('Class added successfully:', result.ops[0]);
-                res.status(200).json({ message: 'Class added successfully', class: result.ops[0] });
-            });
-        });
+        //         console.log('Class added successfully:', result.ops[0]);
+        //         res.status(200).json({ message: 'Class added successfully', class: result.ops[0] });
+        //     });
+        // });
 
 
         //instructor api
@@ -245,7 +277,7 @@ async function run() {
             res.send(result);
         })
     } finally {
-        
+
     }
 }
 run().catch(console.dir);
