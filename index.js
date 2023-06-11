@@ -1,18 +1,28 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-require('dotenv').config()
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const port = process.env.PORT || 5000;
-// middleware
-app.use(cors());
-app.use(express.json());
-const jwt = require('jsonwebtoken');
+// const helmet=require('helmet')
+
+// app.use((req, res, next) => {
+    //     res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+    
+    //     next();
+    // });
+    
+    
+    require('dotenv').config()
+    const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+    const port = process.env.PORT || 5000;
+    // middleware
+    app.use(cors());
+    app.use(express.json());
+    const jwt = require('jsonwebtoken');
+    const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
 
 ///jwt token verify
 const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
-    console.log(authorization)
+    // console.log(authorization)
     if (!authorization) {
         return res.status(401).send({ error: true, message: 'unauthorized access' });
     }
@@ -44,7 +54,8 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
         const ClassesCollection = client.db("SportsAcademy").collection("Classes");
-        const instructorCollection = client.db("SportsAcademy").collection("instructor");
+        const paymenstsCollection = client.db("SportsAcademy").collection("payments");
+        // const paymenstsCollection=client.db
         const bookingCollection = client.db("SportsAcademy").collection("booking");
         const UserCollection = client.db("SportsAcademy").collection("users");
         // Send a ping to confirm a successful connection
@@ -68,11 +79,44 @@ async function run() {
             res.send(result)
         })
 
+       
+        //stripe api payment
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            console.log("price from backend", price)
+            const convert = parseFloat(price)
+            const amount = parseFloat(convert * 100);
+            console.log('from after parse', amount)
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+//payments intend api
+app.post('/payment', verifyJWT,async(req,res)=>{
+    const payment=req.body;
+    // const query={_id:{$in:payment.bookigid.map(id=> new ObjectId(id))}}
+    const query={_id: new ObjectId(payment.itemsId)}
+    console.log(query)
+
+    const confirm=await bookingCollection.deleteOne(query)
+    const result= await paymenstsCollection.insertOne(payment)
+    res.send({confirm,result})
+})
+
+
+      
         //popular instructor api
         app.get('/popularinstructor', async (req, res) => {
-            const result = await instructorCollection.find().sort({ students_enrolled: -1 }).limit(6).toArray()
+            const result = await UserCollection.find({ role: "instructor" }).sort({ students_enrolled: -1 }).limit(6).toArray()
             res.send(result)
         })
+
         // collection.find({ status: 'approved' })
         app.get('/classes', async (req, res) => {
             const result = await ClassesCollection.find({ status: 'approved' }).toArray()
@@ -99,7 +143,7 @@ async function run() {
                 return res.send({ message: 'user already exists' })
             }
             const result = await UserCollection.insertOne(user);
-            console.log(user)
+            // console.log(user)
             res.send(result);
         });
 
@@ -114,9 +158,7 @@ async function run() {
         // post class a instructor
         app.post('/addclasses', async (req, res) => {
             const { className, classImageURL, instructorEmail, availableSeats, price, instructorName } = req.body;
-            
             const newClass = { className, classImageURL, instructorEmail, availableSeats, price, instructorName, status: 'pending' };
-
             try {
                 await ClassesCollection.insertOne(newClass);
                 res.json({ message: 'Class added successfully and pending for approval.' });
@@ -137,7 +179,7 @@ async function run() {
         //check admin
         app.get('/users/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
-            console.log(email)
+            // console.log(email)
             if (req.decoded.email !== email) {
                 res.send({ admin: false })
             }
@@ -166,7 +208,7 @@ async function run() {
 
         //get all my class i am added
         app.get("/myclass/:email", async (req, res) => {
-            console.log('email', req.params.email)
+            // console.log('email', req.params.email)
             const Class = await ClassesCollection.find({
                 instructorEmail: req.params.email
             }).toArray();
@@ -182,6 +224,9 @@ async function run() {
         })
 
 
+        //get payment  number api
+
+
         //update product 
         app.post("/updateclass/:id", async (req, res) => {
             const id = req.params.id;
@@ -192,7 +237,7 @@ async function run() {
                     className: body.className,
                     classImageURL: body.classImageURL,
                     price: body.price,
-                    availableSeats:body.availableSeats
+                    availableSeats: body.availableSeats
                 },
             };
             const result = await ClassesCollection.updateOne(filter, updatedclass,);
@@ -204,7 +249,7 @@ async function run() {
         //admin api
         app.patch('/users/admin/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
-            console.log(id);
+            // console.log(id);
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
@@ -215,28 +260,17 @@ async function run() {
             res.send(result);
         })
 
-        //api for add  new class
-        // app.post('/api/classes', (req, res) => {
-        //     const { className, classImage, availableSeats, price } = req.body;
-        //     const newClass = {
-        //         className,
-        //         classImage,
-        //         availableSeats,
-        //         price,
-        //         status: 'pending',
-        //     };
-        //     // Save the newClass to the classes collection in the database
-        //     ClassesCollection.insertOne(newClass, (error, result) => {
-        //         if (error) {
-        //             console.error('Failed to insert class:', error);
-        //             res.status(500).json({ message: 'Failed to add class' });
-        //             return;
-        //         }
 
-        //         console.log('Class added successfully:', result.ops[0]);
-        //         res.status(200).json({ message: 'Class added successfully', class: result.ops[0] });
-        //     });
-        // });
+        ///payment get api
+        app.get('/payment/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log(id)
+            const query = { _id: new ObjectId(id) }
+            const result = await bookingCollection.findOne(query)
+            console.log(result)
+            res.send(result)
+        })
+
 
 
         //instructor api
