@@ -7,13 +7,13 @@ const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
 const app = express();
 const cors = require('cors');
 // middleware
-const corsOptions ={
-    origin:'*', 
-    credentials:true,
-    optionSuccessStatus:200,
- }
- 
- app.use(cors(corsOptions))
+const corsOptions = {
+    origin: '*',
+    credentials: true,
+    optionSuccessStatus: 200,
+}
+
+app.use(cors(corsOptions))
 app.use(express.json());
 
 
@@ -36,9 +36,6 @@ const verifyJWT = (req, res, next) => {
     })
 }
 
-
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.t81ez4s.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -53,7 +50,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-      
+
         const ClassesCollection = client.db("SportsAcademy").collection("Classes");
         const paymenstsCollection = client.db("SportsAcademy").collection("payments");
         // const paymenstsCollection=client.db
@@ -83,15 +80,15 @@ async function run() {
 
         //veryfie Admin 
 
-const verifyAdmin = async (req, res, next) => {
-    const email = req.decoded.email;
-    const query = { email: email }
-    const user = await UserCollection.findOne(query);
-    if (user?.role !== 'admin') {
-        return res.status(403).send({ error: true, message: 'forbidden message' });
-    }
-    next();
-}
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await UserCollection.findOne(query);
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ error: true, message: 'forbidden message' });
+            }
+            next();
+        }
 
 
         //stripe api payment
@@ -113,8 +110,8 @@ const verifyAdmin = async (req, res, next) => {
         })
         //payments intend api
         app.post('/payment', verifyJWT, async (req, res) => {
-            const payment = req.body;        
-            const query = { _id: new ObjectId(payment.itemsId) }       
+            const payment = req.body;
+            const query = { _id: new ObjectId(payment.itemsId) }
             const confirm = await bookingCollection.deleteOne(query)
             const result = await paymenstsCollection.insertOne(payment)
             res.send({ confirm, result })
@@ -141,7 +138,7 @@ const verifyAdmin = async (req, res, next) => {
 
         })
         //get all users
-        app.get('/users',verifyJWT,verifyAdmin, async (req, res) => {
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await UserCollection.find().toArray();
             res.send(result);
         });
