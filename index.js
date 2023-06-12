@@ -1,14 +1,6 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-// const helmet=require('helmet')
-
-// app.use((req, res, next) => {
-//     res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
-
-//     next();
-// });
-
 
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
