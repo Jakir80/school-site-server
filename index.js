@@ -46,7 +46,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+      
         const ClassesCollection = client.db("SportsAcademy").collection("Classes");
         const paymenstsCollection = client.db("SportsAcademy").collection("payments");
         // const paymenstsCollection=client.db
@@ -106,11 +106,8 @@ const verifyAdmin = async (req, res, next) => {
         })
         //payments intend api
         app.post('/payment', verifyJWT, async (req, res) => {
-            const payment = req.body;
-            // const query={_id:{$in:payment.bookigid.map(id=> new ObjectId(id))}}
-            const query = { _id: new ObjectId(payment.itemsId) }
-            // console.log(query)
-
+            const payment = req.body;        
+            const query = { _id: new ObjectId(payment.itemsId) }       
             const confirm = await bookingCollection.deleteOne(query)
             const result = await paymenstsCollection.insertOne(payment)
             res.send({ confirm, result })
