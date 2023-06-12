@@ -1,12 +1,12 @@
-const express = require('express');
-const app = express();
-const cors = require('cors');
-
 require('dotenv').config()
+const express = require('express');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
+const app = express();
+const cors = require('cors');
 // middleware
-
 const corsOptions ={
     origin:'*', 
     credentials:true,
@@ -15,8 +15,8 @@ const corsOptions ={
  
  app.use(cors(corsOptions))
 app.use(express.json());
-const jwt = require('jsonwebtoken');
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
+
+
 
 ///jwt token verify
 const verifyJWT = (req, res, next) => {
