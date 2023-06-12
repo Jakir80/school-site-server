@@ -4,20 +4,20 @@ const cors = require('cors');
 // const helmet=require('helmet')
 
 // app.use((req, res, next) => {
-    //     res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
-    
-    //     next();
-    // });
-    
-    
-    require('dotenv').config()
-    const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-    const port = process.env.PORT || 5000;
-    // middleware
-    app.use(cors());
-    app.use(express.json());
-    const jwt = require('jsonwebtoken');
-    const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
+//     res.setHeader('Content-Security-Policy', "script-src 'self' 'unsafe-eval'");
+
+//     next();
+// });
+
+
+require('dotenv').config()
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const port = process.env.PORT || 5000;
+// middleware
+app.use(cors());
+app.use(express.json());
+const jwt = require('jsonwebtoken');
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
 
 ///jwt token verify
 const verifyJWT = (req, res, next) => {
@@ -36,6 +36,8 @@ const verifyJWT = (req, res, next) => {
         next();
     })
 }
+
+
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.t81ez4s.mongodb.net/?retryWrites=true&w=majority`;
@@ -79,14 +81,27 @@ async function run() {
             res.send(result)
         })
 
-       
+
+        //veryfie Admin 
+
+const verifyAdmin = async (req, res, next) => {
+    const email = req.decoded.email;
+    const query = { email: email }
+    const user = await UserCollection.findOne(query);
+    if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
+    }
+    next();
+}
+
+
         //stripe api payment
         app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const { price } = req.body;
             console.log("price from backend", price)
             const convert = parseFloat(price)
             const amount = parseFloat(convert * 100);
-            console.log('from after parse', amount)
+            // console.log('from after parse', amount)
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
@@ -97,20 +112,20 @@ async function run() {
                 clientSecret: paymentIntent.client_secret
             })
         })
-//payments intend api
-app.post('/payment', verifyJWT,async(req,res)=>{
-    const payment=req.body;
-    // const query={_id:{$in:payment.bookigid.map(id=> new ObjectId(id))}}
-    const query={_id: new ObjectId(payment.itemsId)}
-    console.log(query)
+        //payments intend api
+        app.post('/payment', verifyJWT, async (req, res) => {
+            const payment = req.body;
+            // const query={_id:{$in:payment.bookigid.map(id=> new ObjectId(id))}}
+            const query = { _id: new ObjectId(payment.itemsId) }
+            // console.log(query)
 
-    const confirm=await bookingCollection.deleteOne(query)
-    const result= await paymenstsCollection.insertOne(payment)
-    res.send({confirm,result})
-})
+            const confirm = await bookingCollection.deleteOne(query)
+            const result = await paymenstsCollection.insertOne(payment)
+            res.send({ confirm, result })
+        })
 
 
-      
+
         //popular instructor api
         app.get('/popularinstructor', async (req, res) => {
             const result = await UserCollection.find({ role: "instructor" }).sort({ students_enrolled: -1 }).limit(6).toArray()
@@ -130,7 +145,7 @@ app.post('/payment', verifyJWT,async(req,res)=>{
 
         })
         //get all users
-        app.get('/users', async (req, res) => {
+        app.get('/users',verifyJWT,verifyAdmin, async (req, res) => {
             const result = await UserCollection.find().toArray();
             res.send(result);
         });
@@ -163,7 +178,7 @@ app.post('/payment', verifyJWT,async(req,res)=>{
                 await ClassesCollection.insertOne(newClass);
                 res.json({ message: 'Class added successfully and pending for approval.' });
             } catch (err) {
-                console.error(err);
+                // console.error(err);
                 res.status(500).json({ message: 'Failed to add class.' });
             }
         });
@@ -204,6 +219,12 @@ app.post('/payment', verifyJWT,async(req,res)=>{
         app.get("/mybookings/:email", async (req, res) => {
             const bookings = await bookingCollection.find({ email: req.params.email }).toArray();
             res.send(bookings);
+        });
+
+        //my payment 
+        app.get("/mypayments/:email", async (req, res) => {
+            const payments = await paymenstsCollection.find({ email: req.params.email }).toArray();
+            res.send(payments);
         });
 
         //get all my class i am added
@@ -264,10 +285,10 @@ app.post('/payment', verifyJWT,async(req,res)=>{
         ///payment get api
         app.get('/payment/:id', async (req, res) => {
             const id = req.params.id;
-            console.log(id)
+            // console.log(id)
             const query = { _id: new ObjectId(id) }
             const result = await bookingCollection.findOne(query)
-            console.log(result)
+            // console.log(result)
             res.send(result)
         })
 
