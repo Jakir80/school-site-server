@@ -56,6 +56,10 @@ async function run() {
         // const paymenstsCollection=client.db
         const bookingCollection = client.db("SportsAcademy").collection("booking");
         const UserCollection = client.db("SportsAcademy").collection("users");
+        const BlogsCollection = client.db("SportsAcademy").collection("blog");
+        const ChoseOneCollection = client.db("SportsAcademy").collection("choseone");
+        const ChoseTwoCollection = client.db("SportsAcademy").collection("chosetwo");
+    
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -76,6 +80,22 @@ async function run() {
             const result = await ClassesCollection.find({ status: 'approved' }).sort({ students_enrolled: -1 }).limit(6).toArray()
             res.send(result)
         })
+
+        app.get('/blog',async(req,res)=>{
+            const result=await BlogsCollection.find().toArray();
+            res.send(result)
+        })
+        app.get('/choseone',async(req,res)=>{
+            const result=await ChoseOneCollection.find().toArray();
+            res.send(result)
+        })
+        app.get('/chosetwo',async(req,res)=>{
+            const result=await ChoseTwoCollection.find().toArray();
+            res.send(result)
+        })
+
+
+
 
 
         //veryfie Admin 
